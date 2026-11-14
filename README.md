@@ -14,7 +14,6 @@ ShopSync is a full-stack product search, price intelligence, and AI comparison p
 - **Frontend:** HTML5, Tailwind CSS, Chart.js, Marked.js, FontAwesome
 
 
-
 Markdown
 ## Local Setup
 
@@ -23,15 +22,16 @@ Markdown
    git clone https://github.com/sumitpacer/ShopSync-Aggregator.git
    cd ShopSync-Aggregator/backend
 Install dependencies
+
 Bash
 pip install flask flask-cors python-dotenv google-genai requests
-
 Configure environment variables
 Create a .env file inside backend/:
+
 Code snippet
 GEMINI_API_KEY=your_gemini_api_key_here
-
 Run the server
+
 Bash
 python app.py
 Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
