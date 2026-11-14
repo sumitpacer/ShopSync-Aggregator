@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopSync - E-Commerce Aggregator & AI Compare</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Marked.js for AI Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Chart.js for Price History -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
+
+    <!-- Navigation Header -->
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-cart-shopping text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">ShopSync</h1>
+                    <p class="text-xs text-slate-400">Multi-Vendor Aggregator & AI Intelligence</p>
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+                <button type="button" onclick="switchTab('search')" id="tab-search" class="px-4 sm:px-5 py-2 rounded-lg font-medium text-sm transition-all bg-indigo-600 text-white shadow">
+                    <i class="fa-solid fa-magnifying-glass mr-1.5"></i>Product Search
+                </button>
+                <button type="button" onclick="switchTab('compare')" id="tab-compare" class="px-4 sm:px-5 py-2 rounded-lg font-medium text-sm transition-all text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-scale-balanced mr-1.5"></i>AI Compare
+                </button>
+                <button type="button" onclick="switchTab('wishlist')" id="tab-wishlist" class="px-4 sm:px-5 py-2 rounded-lg font-medium text-sm transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-heart text-rose-400"></i>
+                    <span>Saved</span>
+                    <span id="wishlist-badge" class="bg-slate-700 text-slate-200 text-[11px] font-bold px-2 py-0.5 rounded-full">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 pb-24">
+
+        <!-- ================= TAB 1: PRODUCT SEARCH & AGGREGATOR ================= -->
+        <section id="view-search" class="space-y-8">
+            <div class="max-w-3xl mx-auto text-center space-y-4">
+                <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Find the Best Prices Across the Web</h2>
+                <p class="text-slate-400 text-sm sm:text-base">Aggregating live multi-vendor pricing, 90-day deal timing verdicts, and Gemini-powered buyer insights.</p>
+                
+                <!-- Search Form -->
+                <form id="search-form" class="flex gap-2 pt-2">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-query" placeholder="e.g. Sony WH-1000XM5, iPhone 18 Pro Max, MacBook Air M4..." 
+                            class="w-full pl-11 pr-4 py-3.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-white placeholder-slate-500 text-sm shadow-inner">
+                    </div>
+                    <button type="submit" id="search-btn" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3.5 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center min-w-[120px]">
+                        <span>Search</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Loading State -->
+            <div id="search-loading" class="hidden text-center py-20 space-y-4">
+                <div class="inline-block w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-slate-400 text-sm animate-pulse">Scanning vendor platforms & computing 90-day deal scores...</p>
+            </div>
+
+            <!-- Search Results Container -->
+            <div id="search-results-container" class="hidden space-y-6">
+                <!-- Smart Filters, Sorting & In-Stock Control Bar -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Vendor Filter -->
+                        <div class="flex items-center gap-2">
+                            <label for="filter-vendor" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vendor</label>
+                            <select id="filter-vendor" onchange="applyFiltersAndSort()" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+                                <option value="ALL">All Vendors</option>
+                            </select>
+                        </div>
+
+                        <!-- Max Price Filter -->
+                        <div class="flex items-center gap-2">
+                            <label for="filter-max-price" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Max ₹</label>
+                            <input type="number" id="filter-max-price" oninput="applyFiltersAndSort()" placeholder="Any budget"
+                                class="w-32 bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+                        </div>
+
+                        <!-- Deal Verdict Filter -->
+                        <div class="flex items-center gap-2">
+                            <label for="filter-deal" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Deal</label>
+                            <select id="filter-deal" onchange="applyFiltersAndSort()" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+                                <option value="ALL">All Deals</option>
+                                <option value="Buy Now">Buy Now Only</option>
+                                <option value="Fair Price">Fair Price & Better</option>
+                            </select>
+                        </div>
+
+                        <!-- In-Stock Toggle -->
+                        <label class="inline-flex items-center gap-2 cursor-pointer bg-slate-950 border border-slate-700 px-3 py-2 rounded-xl text-xs text-slate-300 select-none">
+                            <input type="checkbox" id="filter-instock" onchange="applyFiltersAndSort()" class="accent-indigo-500 rounded">
+                            <span>In-Stock Only</span>
+                        </label>
+                    </div>
+
+                    <!-- Sort Dropdown & Reset -->
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <label for="sort-products" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sort</label>
+                            <select id="sort-products" onchange="applyFiltersAndSort()" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+                                <option value="relevance">Relevance</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="price-desc">Price: High to Low</option>
+                                <option value="deal-best">Best Deal Score First</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="resetFilters()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold px-2 py-1">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-bold mb-4 flex items-center justify-between">
+                        <span>Aggregated Vendor Results</span>
+                        <span id="result-count" class="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700">0 found</span>
+                    </h3>
+                    <div id="products-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 2: AI COMPARE ================= -->
+        <section id="view-compare" class="hidden space-y-8">
+            <div class="max-w-3xl mx-auto text-center space-y-4">
+                <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Head-to-Head Product Comparison</h2>
+                <p class="text-slate-400 text-sm sm:text-base">Compare 10 key specs, pricing, and performance metrics side-by-side with automated AI verdict generation.</p>
+                
+                <!-- Compare Form -->
+                <form id="compare-form" class="grid sm:grid-cols-2 gap-3 pt-2">
+                    <div class="relative">
+                        <input type="text" id="compare-q1" placeholder="Product 1 (e.g. Samsung Galaxy S25 Ultra)" 
+                            class="w-full px-4 py-3.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-500 text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="compare-q2" placeholder="Product 2 (e.g. iPhone 18 Pro Max)" 
+                            class="w-full px-4 py-3.5 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-500 text-sm">
+                        <button type="submit" id="compare-btn" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3.5 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-600/30 whitespace-nowrap">
+                            Compare
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Compare Loading -->
+            <div id="compare-loading" class="hidden text-center py-20 space-y-4">
+                <div class="inline-block w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-slate-400 text-sm animate-pulse">Fetching live specs and generating AI showdown verdict...</p>
+            </div>
+
+            <!-- Compare Results Container -->
+            <div id="compare-results-container" class="hidden space-y-6">
+                <!-- Compared Products Preview Banner -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div id="compare-preview-1" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center space-x-4"></div>
+                    <div id="compare-preview-2" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center space-x-4"></div>
+                </div>
+
+                <!-- 10-Row Minimal Feature-by-Feature Comparison Table -->
+                <div id="compare-table-container" class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl"></div>
+
+                <!-- Styled AI Final Verdict Output -->
+                <div class="bg-gradient-to-br from-indigo-950/50 to-slate-950 border border-indigo-500/40 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-indigo-500/10 relative overflow-hidden">
+                    <div class="absolute -top-12 -right-12 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="flex items-center space-x-4 mb-4">
+                        <div class="p-3 bg-indigo-500/20 rounded-xl border border-indigo-500/30 flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-trophy text-indigo-400 text-xl drop-shadow-md"></i>
+                        </div>
+                        <h3 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-300">
+                            Final Verdict
+                        </h3>
+                    </div>
+                    <div class="prose prose-invert prose-lg max-w-none text-slate-200 leading-relaxed font-medium" id="ai-comparison-output"></div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 3: SAVED WISHLIST ================= -->
+        <section id="view-wishlist" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div>
+                    <h2 class="text-2xl font-extrabold flex items-center gap-2.5">
+                        <i class="fa-solid fa-heart text-rose-500"></i>
+                        <span>Saved Wishlist & Deal Tracker</span>
+                    </h2>
+                    <p class="text-slate-400 text-sm mt-1">Bookmark items across searches to track combined cart totals and deal timing.</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block uppercase tracking-wider">Combined Total</span>
+                        <span id="wishlist-total" class="text-2xl font-black text-emerald-400">₹0</span>
+                    </div>
+                    <button type="button" onclick="clearWishlist()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <div id="wishlist-empty" class="text-center py-20 bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl space-y-3">
+                <i class="fa-regular fa-heart text-4xl text-slate-600"></i>
+                <h3 class="text-lg font-bold text-slate-300">No saved products yet</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto">Click the heart icon on any product card in Product Search to save it here.</p>
+                <button type="button" onclick="switchTab('search')" class="mt-2 bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 rounded-xl text-xs font-semibold transition-all">
+                    Browse Products
+                </button>
+            </div>
+
+            <div id="wishlist-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+    </main>
+
+    <!-- ================= FLOATING AI SHOPPING COPILOT DRAWER ================= -->
+    <button type="button" onclick="toggleCopilotDrawer()" id="copilot-fab"
+        class="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white px-5 py-3.5 rounded-full shadow-2xl shadow-indigo-500/40 flex items-center gap-2.5 font-semibold text-sm transition-all">
+        <i class="fa-solid fa-robot text-lg"></i>
+        <span>Ask ShopSync AI</span>
+    </button>
+
+    <!-- Slide-Over Backdrop & Panel -->
+    <div id="copilot-backdrop" onclick="toggleCopilotDrawer()" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 hidden"></div>
+    <aside id="copilot-drawer" class="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-slate-900 border-l border-slate-800 z-50 transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+        <!-- Drawer Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-500/20 border border-indigo-500/30 rounded-xl text-indigo-400">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm text-white">ShopSync AI Copilot</h3>
+                    <p class="text-[11px] text-emerald-400 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span> Context-aware shopping assistant
+                    </p>
+                </div>
+            </div>
+            <button type="button" onclick="toggleCopilotDrawer()" class="text-slate-400 hover:text-white p-2 rounded-lg">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Quick Suggested Prompts -->
+        <div class="p-3 border-b border-slate-800/80 bg-slate-900/80 flex flex-wrap gap-1.5">
+            <button type="button" onclick="askCopilotPreset('Which loaded option is the best value for money?')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition-all">
+                Best value for money?
+            </button>
+            <button type="button" onclick="askCopilotPreset('Which items have a Buy Now deal verdict right now?')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition-all">
+                Best Buy Now deals?
+            </button>
+            <button type="button" onclick="askCopilotPreset('Rank the top 3 options for performance and battery.')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 transition-all">
+                Rank top 3 picks
+            </button>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="copilot-messages" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
+            <div class="bg-slate-800/80 border border-slate-700/70 rounded-2xl rounded-tl-none p-3.5 text-slate-200 leading-relaxed">
+                Hi! Search for any product and ask me to compare options, spot hidden price drops, or pick the best model for your budget in ₹.
+            </div>
+        </div>
+
+        <!-- Chat Input -->
+        <form id="copilot-form" class="p-3 border-t border-slate-800 bg-slate-950/70 flex gap-2">
+            <input type="text" id="copilot-input" placeholder="Ask about loaded products..."
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            <button type="submit" id="copilot-send-btn" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </aside>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const API_BASE = "https://chewable-haggler-educator.ngrok-free.dev/api";
+        const WISHLIST_STORAGE_KEY = "shopsync_wishlist_v1";
+        const chartInstances = {};
+        let currentProducts = [];
+        let displayedProducts = [];
+        let wishlist = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || "[]");
+
+        updateWishlistBadge();
+
+        function switchTab(tab) {
+            const views = {
+                search: document.getElementById('view-search'),
+                compare: document.getElementById('view-compare'),
+                wishlist: document.getElementById('view-wishlist')
+            };
+            const tabs = {
+                search: document.getElementById('tab-search'),
+                compare: document.getElementById('tab-compare'),
+                wishlist: document.getElementById('tab-wishlist')
+            };
+
+            Object.keys(views).forEach(key => {
+                if (key === tab) {
+                    views[key].classList.remove('hidden');
+                    tabs[key].className = "px-4 sm:px-5 py-2 rounded-lg font-medium text-sm transition-all bg-indigo-600 text-white shadow flex items-center gap-1.5";
+                } else {
+                    views[key].classList.add('hidden');
+                    tabs[key].className = "px-4 sm:px-5 py-2 rounded-lg font-medium text-sm transition-all text-slate-400 hover:text-white flex items-center gap-1.5";
+                }
+            });
+
+            if (tab === 'wishlist') {
+                renderWishlist();
+            }
+        }
+
+        function getDealBadgeHtml(p) {
+            const advice = p.deal_advice || "Fair Price";
+            const reason = p.deal_reason || "Tracked across 90 days";
+
+            if (advice === "Buy Now") {
+                return `<span title="${reason}" class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <i class="fa-solid fa-bolt"></i> Buy Now
+                </span>`;
+            }
+            if (advice === "Wait") {
+                return `<span title="${reason}" class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                    <i class="fa-solid fa-hourglass-half"></i> Wait
+                </span>`;
+            }
+            return `<span title="${reason}" class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <i class="fa-solid fa-scale-balanced"></i> Fair Price
+            </span>`;
+        }
+
+        function isSavedInWishlist(title) {
+            return wishlist.some(item => item.title === title);
+        }
+
+        function updateWishlistBadge() {
+            document.getElementById('wishlist-badge').innerText = wishlist.length;
+        }
+
+        function toggleWishlistItem(index) {
+            const product = displayedProducts[index];
+            if (!product) return;
+
+            const existingIdx = wishlist.findIndex(item => item.title === product.title);
+            if (existingIdx >= 0) {
+                wishlist.splice(existingIdx, 1);
+            } else {
+                wishlist.push(product);
+            }
+
+            localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
+            updateWishlistBadge();
+            renderProductCards(displayedProducts);
+        }
+
+        function removeWishlistByTitle(encodedTitle) {
+            const title = decodeURIComponent(encodedTitle);
+            wishlist = wishlist.filter(item => item.title !== title);
+            localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
+            updateWishlistBadge();
+            renderWishlist();
+            if (displayedProducts.length) renderProductCards(displayedProducts);
+        }
+
+        function clearWishlist() {
+            wishlist = [];
+            localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
+            updateWishlistBadge();
+            renderWishlist();
+            if (displayedProducts.length) renderProductCards(displayedProducts);
+        }
+
+        function renderWishlist() {
+            const emptyState = document.getElementById('wishlist-empty');
+            const grid = document.getElementById('wishlist-grid');
+            const totalEl = document.getElementById('wishlist-total');
+
+            const totalSum = wishlist.reduce((acc, item) => acc + (Number(item.numeric_price) || 0), 0);
+            totalEl.innerText = `₹${totalSum.toLocaleString('en-IN')}`;
+
+            if (!wishlist.length) {
+                emptyState.classList.remove('hidden');
+                grid.innerHTML = '';
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            grid.innerHTML = wishlist.map(p => `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${p.vendor}</span>
+                            ${getDealBadgeHtml(p)}
+                        </div>
+                        <div class="h-40 bg-white/5 rounded-xl p-3 flex items-center justify-center mb-3">
+                            <img src="${p.photo}" alt="Product" class="max-h-full max-w-full object-contain">
+                        </div>
+                        <h4 class="font-medium text-sm text-slate-200 line-clamp-2">${p.title}</h4>
+                        <p class="text-[11px] text-slate-400 mt-1">${p.deal_reason || ''}</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+                        <span class="text-lg font-bold text-emerald-400">${p.raw_price}</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="removeWishlistByTitle('${encodeURIComponent(p.title)}')" class="bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 p-2 rounded-xl text-xs" title="Remove">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            <a href="${p.url}" target="_blank" class="bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2 rounded-xl text-xs font-semibold">
+                                Buy <i class="fa-solid fa-arrow-up-right-from-square text-[10px] ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('search-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = document.getElementById('search-query').value.trim();
+            if (!query) return;
+
+            const loading = document.getElementById('search-loading');
+            const container = document.getElementById('search-results-container');
+            const btn = document.getElementById('search-btn');
+
+            loading.classList.remove('hidden');
+            container.classList.add('hidden');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentProducts = data.products || [];
+                    populateVendorFilter(currentProducts);
+                    resetFilters(false);
+                    applyFiltersAndSort();
+                    container.classList.remove('hidden');
+                } else {
+                    alert(data.error || "Search failed.");
+                }
+            } catch (err) {
+                console.error("Network error:", err);
+                alert("Could not connect to backend server. Make sure Flask and ngrok are running.");
+            } finally {
+                loading.classList.add('hidden');
+                btn.disabled = false;
+            }
+        });
+
+        function populateVendorFilter(products) {
+            const vendorSelect = document.getElementById('filter-vendor');
+            const vendors = [...new Set(products.map(p => p.vendor).filter(Boolean))];
+            vendorSelect.innerHTML = `<option value="ALL">All Vendors (${vendors.length})</option>` +
+                vendors.map(v => `<option value="${v}">${v}</option>`).join('');
+        }
+
+        function resetFilters(reapply = true) {
+            document.getElementById('filter-vendor').value = 'ALL';
+            document.getElementById('filter-max-price').value = '';
+            document.getElementById('filter-deal').value = 'ALL';
+            document.getElementById('filter-instock').checked = false;
+            document.getElementById('sort-products').value = 'relevance';
+            if (reapply) applyFiltersAndSort();
+        }
+
+        function applyFiltersAndSort() {
+            const vendorVal = document.getElementById('filter-vendor').value;
+            const maxPriceVal = parseFloat(document.getElementById('filter-max-price').value);
+            const dealVal = document.getElementById('filter-deal').value;
+            const inStockOnly = document.getElementById('filter-instock').checked;
+            const sortVal = document.getElementById('sort-products').value;
+
+            let filtered = currentProducts.filter(p => {
+                if (vendorVal !== 'ALL' && p.vendor !== vendorVal) return false;
+                if (!isNaN(maxPriceVal) && maxPriceVal > 0 && (p.numeric_price || 0) > maxPriceVal) return false;
+                if (dealVal === 'Buy Now' && p.deal_advice !== 'Buy Now') return false;
+                if (dealVal === 'Fair Price' && p.deal_advice === 'Wait') return false;
+                if (inStockOnly && p.in_stock === false) return false;
+                return true;
+            });
+
+            if (sortVal === 'price-asc') {
+                filtered.sort((a, b) => (a.numeric_price || 0) - (b.numeric_price || 0));
+            } else if (sortVal === 'price-desc') {
+                filtered.sort((a, b) => (b.numeric_price || 0) - (a.numeric_price || 0));
+            } else if (sortVal === 'deal-best') {
+                const rank = { "Buy Now": 1, "Fair Price": 2, "Wait": 3 };
+                filtered.sort((a, b) => (rank[a.deal_advice] || 2) - (rank[b.deal_advice] || 2));
+            }
+
+            displayedProducts = filtered;
+            renderProductCards(displayedProducts);
+        }
+
+        function renderProductCards(productsList) {
+            document.getElementById('result-count').innerText = `${productsList.length} of ${currentProducts.length} shown`;
+            const grid = document.getElementById('products-grid');
+
+            if (!productsList.length) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 bg-slate-900/50 border border-slate-800 rounded-2xl text-slate-400 text-sm">
+                        No products match your active filters. Click <strong>Reset</strong> to view all results.
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = productsList.map((p, index) => {
+                const saved = isSavedInWishlist(p.title);
+                return `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all shadow-lg relative">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${p.vendor}</span>
+                            <div class="flex items-center gap-1.5">
+                                ${getDealBadgeHtml(p)}
+                                <button type="button" onclick="toggleWishlistItem(${index})" title="${saved ? 'Remove from Saved' : 'Save to Wishlist'}"
+                                    class="w-7 h-7 rounded-lg border flex items-center justify-center transition-all ${saved ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-rose-400'}">
+                                    <i class="${saved ? 'fa-solid' : 'fa-regular'} fa-heart text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="h-44 bg-white/5 rounded-xl p-4 flex items-center justify-center mb-3 overflow-hidden">
+                            <img src="${p.photo}" alt="Product image" class="max-h-full max-w-full object-contain">
+                        </div>
+
+                        <h4 class="font-medium text-sm text-slate-200 line-clamp-2">${p.title}</h4>
+                        <p class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-simple text-indigo-400"></i>
+                            <span>${p.deal_reason || '90-day price tracked'}</span>
+                        </p>
+                    </div>
+
+                    <div id="ai-review-${index}" class="mt-3 bg-slate-950 rounded-lg p-3 hidden border border-indigo-500/30">
+                        <div class="text-xs text-indigo-400 animate-pulse" id="ai-loading-${index}">
+                            <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Analyzing reviews with Gemini...
+                        </div>
+                        <div id="ai-content-${index}" class="text-xs text-slate-300 space-y-2 hidden"></div>
+                    </div>
+
+                    <div id="chart-container-${index}" class="mt-3 hidden bg-slate-950 p-3 rounded-lg border border-emerald-500/30 space-y-2">
+                        <div id="chart-advice-${index}" class="text-[11px] font-semibold text-emerald-300"></div>
+                        <div class="h-32">
+                            <canvas id="chart-${index}"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-800 flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-slate-400 block">Best Price</span>
+                                <span class="text-lg font-bold text-emerald-400">${p.raw_price}</span>
+                            </div>
+                            <a href="${p.url}" target="_blank" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1.5">
+                                <span>View Deal</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        </div>
+
+                        <div class="flex gap-2 w-full mt-1">
+                            <button type="button" onclick="getProductReview(${index})" class="flex-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 py-2 rounded-xl text-xs font-semibold transition-all flex justify-center items-center gap-1.5">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> AI Review
+                            </button>
+                            <button type="button" onclick="getPriceHistory(${index})" class="flex-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 py-2 rounded-xl text-xs font-semibold transition-all flex justify-center items-center gap-1.5">
+                                <i class="fa-solid fa-chart-line"></i> 90d History
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        async function getProductReview(index) {
+            const productTitle = displayedProducts[index]?.title;
+            if (!productTitle) return;
+
+            document.getElementById(`chart-container-${index}`).classList.add('hidden');
+            const reviewBox = document.getElementById(`ai-review-${index}`);
+            const loadingBox = document.getElementById(`ai-loading-${index}`);
+            const contentBox = document.getElementById(`ai-content-${index}`);
+
+            reviewBox.classList.toggle('hidden');
+            if (reviewBox.classList.contains('hidden')) return;
+
+            loadingBox.classList.remove('hidden');
+            contentBox.classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/product-review`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_title: productTitle })
+                });
+                const data = await response.json();
+
+                loadingBox.classList.add('hidden');
+                contentBox.classList.remove('hidden');
+
+                let html = '';
+                if (data.pros && data.pros.length) {
+                    html += `<div class="text-emerald-400 font-semibold mb-1"><i class="fa-solid fa-check mr-1"></i>Pros</div>
+                             <ul class="list-disc pl-4 mb-3 space-y-1">${data.pros.map(p => `<li>${p}</li>`).join('')}</ul>`;
+                }
+                if (data.cons && data.cons.length) {
+                    html += `<div class="text-rose-400 font-semibold mb-1"><i class="fa-solid fa-xmark mr-1"></i>Cons</div>
+                             <ul class="list-disc pl-4 space-y-1">${data.cons.map(c => `<li>${c}</li>`).join('')}</ul>`;
+                }
+                contentBox.innerHTML = html || "No review data available.";
+            } catch (err) {
+                loadingBox.innerText = "Failed to load review.";
+                loadingBox.classList.replace('text-indigo-400', 'text-rose-400');
+            }
+        }
+
+        async function getPriceHistory(index) {
+            const productTitle = displayedProducts[index]?.title;
+            if (!productTitle) return;
+
+            document.getElementById(`ai-review-${index}`).classList.add('hidden');
+            const chartContainer = document.getElementById(`chart-container-${index}`);
+            chartContainer.classList.toggle('hidden');
+
+            if (chartContainer.classList.contains('hidden')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/price-history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_title: productTitle })
+                });
+                const data = await response.json();
+
+                if (data.deal_advisor) {
+                    document.getElementById(`chart-advice-${index}`).innerText =
+                        `Verdict: ${data.deal_advisor.status} — ${data.deal_advisor.reason}`;
+                }
+
+                if (chartInstances[index]) chartInstances[index].destroy();
+
+                const ctx = document.getElementById(`chart-${index}`).getContext('2d');
+                chartInstances[index] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.history.map(item => item.date.slice(5)),
+                        datasets: [{
+                            data: data.history.map(item => item.price),
+                            borderColor: '#34d399',
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#34d399'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } },
+                            y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#334155' } }
+                        }
+                    }
+                });
+            } catch (err) {
+                alert("Failed to load price history.");
+            }
+        }
+
+        document.getElementById('compare-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query1 = document.getElementById('compare-q1').value.trim();
+            const query2 = document.getElementById('compare-q2').value.trim();
+            if (!query1 || !query2) {
+                alert("Please enter both products to compare.");
+                return;
+            }
+
+            const loading = document.getElementById('compare-loading');
+            const container = document.getElementById('compare-results-container');
+            const btn = document.getElementById('compare-btn');
+
+            loading.classList.remove('hidden');
+            container.classList.add('hidden');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/compare`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query1, query2 })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    renderCompareResults(data);
+                } else {
+                    alert(data.error || "Comparison failed.");
+                }
+            } catch (err) {
+                console.error("Network error:", err);
+                alert("Could not connect to backend server.");
+            } finally {
+                loading.classList.add('hidden');
+                btn.disabled = false;
+            }
+        });
+
+        function renderCompareResults(data) {
+            const container = document.getElementById('compare-results-container');
+            container.classList.remove('hidden');
+
+            document.getElementById('compare-preview-1').innerHTML = `
+                <img src="${data.product_1.photo}" class="w-16 h-16 object-contain bg-white/5 rounded-lg p-2">
+                <div>
+                    <span class="text-xs text-indigo-400 font-semibold">${data.product_1.vendor} - ${data.product_1.raw_price}</span>
+                    <h4 class="text-sm font-medium line-clamp-1">${data.product_1.title}</h4>
+                </div>
+            `;
+
+            document.getElementById('compare-preview-2').innerHTML = `
+                <img src="${data.product_2.photo}" class="w-16 h-16 object-contain bg-white/5 rounded-lg p-2">
+                <div>
+                    <span class="text-xs text-indigo-400 font-semibold">${data.product_2.vendor} - ${data.product_2.raw_price}</span>
+                    <h4 class="text-sm font-medium line-clamp-1">${data.product_2.title}</h4>
+                </div>
+            `;
+
+            const comp = data.ai_comparison;
+            const tableContainer = document.getElementById('compare-table-container');
+
+            if (typeof comp === 'object' && comp !== null) {
+                const rowsHtml = (comp.rows || []).map(row => {
+                    const p1Win = row.winner === 'p1';
+                    const p2Win = row.winner === 'p2';
+                    return `
+                        <tr class="border-t border-slate-800/80 hover:bg-slate-800/30 transition-colors">
+                            <td class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-400">${row.feature}</td>
+                            <td class="px-5 py-3.5 text-sm ${p1Win ? 'text-emerald-400 font-semibold' : 'text-slate-300'}">
+                                ${row.p1} ${p1Win ? '<i class="fa-solid fa-check text-xs ml-1"></i>' : ''}
+                            </td>
+                            <td class="px-5 py-3.5 text-sm ${p2Win ? 'text-emerald-400 font-semibold' : 'text-slate-300'}">
+                                ${row.p2} ${p2Win ? '<i class="fa-solid fa-check text-xs ml-1"></i>' : ''}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tableContainer.innerHTML = rowsHtml ? `
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-400">
+                                <th class="px-5 py-3 w-1/4">Feature</th>
+                                <th class="px-5 py-3 w-[37.5%] text-indigo-300">${data.product_1.title.split('(')[0].trim()}</th>
+                                <th class="px-5 py-3 w-[37.5%] text-cyan-300">${data.product_2.title.split('(')[0].trim()}</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                ` : '';
+
+                document.getElementById('ai-comparison-output').innerHTML = marked.parse(comp.verdict || '');
+            } else {
+                tableContainer.innerHTML = '';
+                document.getElementById('ai-comparison-output').innerHTML = marked.parse(comp || '');
+            }
+        }
+
+        // ================= AI SHOPPING COPILOT LOGIC =================
+        function toggleCopilotDrawer() {
+            const drawer = document.getElementById('copilot-drawer');
+            const backdrop = document.getElementById('copilot-backdrop');
+            const isClosed = drawer.classList.contains('translate-x-full');
+
+            if (isClosed) {
+                drawer.classList.remove('translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                drawer.classList.add('translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function askCopilotPreset(questionText) {
+            document.getElementById('copilot-input').value = questionText;
+            document.getElementById('copilot-form').dispatchEvent(new Event('submit'));
+        }
+
+        document.getElementById('copilot-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('copilot-input');
+            const question = input.value.trim();
+            if (!question) return;
+
+            const messagesBox = document.getElementById('copilot-messages');
+            const sendBtn = document.getElementById('copilot-send-btn');
+
+            // Append User Message
+            messagesBox.innerHTML += `
+                <div class="bg-indigo-600 text-white rounded-2xl rounded-tr-none p-3.5 ml-8 shadow">
+                    ${question}
+                </div>
+            `;
+            input.value = '';
+            sendBtn.disabled = true;
+
+            const loadingId = `copilot-wait-${Date.now()}`;
+            messagesBox.innerHTML += `
+                <div id="${loadingId}" class="bg-slate-800/80 border border-slate-700/70 rounded-2xl rounded-tl-none p-3.5 text-indigo-300 text-xs animate-pulse mr-8">
+                    <i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i>Analyzing options...
+                </div>
+            `;
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+
+            try {
+                const response = await fetch(`${API_BASE}/copilot`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question,
+                        products: displayedProducts.length ? displayedProducts : wishlist
+                    })
+                });
+                const data = await response.json();
+                const waitEl = document.getElementById(loadingId);
+                if (waitEl) waitEl.remove();
+
+                messagesBox.innerHTML += `
+                    <div class="bg-slate-800/80 border border-slate-700/70 rounded-2xl rounded-tl-none p-3.5 text-slate-200 prose prose-invert prose-sm max-w-none mr-6">
+                        ${marked.parse(data.reply || data.error || "No response.")}
+                    </div>
+                `;
+            } catch (err) {
+                const waitEl = document.getElementById(loadingId);
+                if (waitEl) {
+                    waitEl.className = "bg-rose-950/70 border border-rose-500/40 rounded-2xl p-3 text-rose-300 text-xs mr-8";
+                    waitEl.innerText = "Network error reaching ShopSync AI.";
+                }
+            } finally {
+                sendBtn.disabled = false;
+                messagesBox.scrollTop = messagesBox.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
