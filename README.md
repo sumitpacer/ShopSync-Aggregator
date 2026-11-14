@@ -21,17 +21,21 @@ Markdown
    ```bash
    git clone https://github.com/sumitpacer/ShopSync-Aggregator.git
    cd ShopSync-Aggregator/backend
-Install dependencies
+   
+1.Install dependencies
 
-Bash
-pip install flask flask-cors python-dotenv google-genai requests
-Configure environment variables
+-->[pip install flask flask-cors python-dotenv google-genai requests]
+
+
+2.Configure environment variables
+
 Create a .env file inside backend/:
 
-Code snippet
-GEMINI_API_KEY=your_gemini_api_key_here
-Run the server
+-->[GEMINI_API_KEY=your_gemini_api_key_here]
 
-Bash
-python app.py
+
+3.Run the server
+
+-->[python app.py]
+
 Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
